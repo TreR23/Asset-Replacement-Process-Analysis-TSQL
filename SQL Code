@@ -1,0 +1,118 @@
+--1. Checking that import was completed successfully
+
+SELECT *
+FROM Formlabs.dbo.AssetReplacements
+
+--2.  Checking total number
+
+SELECT COUNT(DISTINCT SerialName) AS TotalAssetReplacements
+FROM Formlabs.dbo.AssetReplacements
+
+--3.  Checking count by region
+
+SELECT Region, COUNT(DISTINCT SerialName) AS TotalAssetReplacements
+FROM Formlabs.dbo.AssetReplacements
+GROUP BY Region;
+
+--4. Looking to see how many unique status updates exist
+
+SELECT DISTINCT [Support status]
+FROM Formlabs.dbo.AssetReplacements
+
+--5. Checking typical order of steps using specific SerialName
+
+SELECT DISTINCT *
+FROM Formlabs.dbo.AssetReplacements
+WHERE SerialName = 'ClearTetra'
+ORDER BY [Support status change date]
+
+--6. Checking datatypes
+
+select * from information_schema.columns
+
+--7.  Creating table for case opens
+
+	SELECT *
+	INTO Formlabs.dbo.CaseOpen
+FROM Formlabs.dbo.AssetReplacements
+WHERE [Support status] = 'Case Opened';
+
+--8. Looking at new table
+
+SELECT *
+FROM Formlabs.dbo.CaseOpen
+
+--9. Creating table for escalations
+
+SELECT *
+		INTO Formlabs.dbo.Escalation
+FROM Formlabs.dbo.AssetReplacements
+WHERE [Support status] = 'Escalation Approved';
+
+SELECT *
+FROM Formlabs.dbo.Escalation
+
+--10. Creating table for order sents
+
+SELECT *
+		INTO Formlabs.dbo.Ordersent
+FROM Formlabs.dbo.AssetReplacements
+WHERE [Support status] = 'Order Sent';
+
+SELECT *
+FROM Formlabs.dbo.Ordersent
+
+--11. Creating table for return tracking live
+
+SELECT *
+		INTO Formlabs.dbo.ReturnTracking
+FROM Formlabs.dbo.AssetReplacements
+WHERE [Support status] = 'Return Tracking # Live';
+
+SELECT *
+FROM Formlabs.dbo.ReturnTracking
+
+--12. Creating table for package received
+
+SELECT *
+		INTO Formlabs.dbo.Packagereceived
+FROM Formlabs.dbo.AssetReplacements
+WHERE [Support status] = 'Package received by Formlabs';
+
+--13. Creating table for disbursements
+	SELECT *
+		INTO Formlabs.dbo.Disbursement
+FROM Formlabs.dbo.AssetReplacements
+WHERE [Support status] = 'Disbursement';
+
+SELECT *
+FROM Formlabs.dbo.Disbursement
+
+--14. Creating main table to calculate time between steps
+
+SELECT 
+	C.Region,
+	AVG(CAST(DATEDIFF(day, C.[Support status change date], D.[Support status change date])AS float))  AS AvgStartToFinish,
+	AVG(CAST(DATEDIFF(day, C.[Support status change date], E.[Support status change date])AS float))  AS AvgStep1,
+	AVG(CAST(DATEDIFF(day, E.[Support status change date], O.[Support status change date])AS float)) AS AvgStep2,
+	AVG(CAST(DATEDIFF(day, O.[Support status change date], R.[Support status change date])AS float)) AS AvgStep3,
+	AVG(CAST(DATEDIFF(day, R.[Support status change date], P.[Support status change date])AS float)) AS AvgStep4,
+	AVG(CAST(DATEDIFF(day, P.[Support status change date], D.[Support status change date])AS float)) AS AvgStep5
+	
+		--AVG(CAST(DATEDIFF(day, C.[Support status change date], E.[Support status change date])AS float)) +
+		--AVG(CAST(DATEDIFF(day, E.[Support status change date], O.[Support status change date])AS float)) +
+		--AVG(CAST(DATEDIFF(day, O.[Support status change date], R.[Support status change date])AS float)) +
+		--AVG(CAST(DATEDIFF(day, R.[Support status change date], P.[Support status change date])AS float)) +
+		--AVG(CAST(DATEDIFF(day, P.[Support status change date], D.[Support status change date])AS float)) AS VerificationTotalof5Steps
+FROM Formlabs.dbo.CaseOpen AS C
+LEFT JOIN Formlabs.dbo.Escalation AS E
+ON C.SerialName = E.SerialName
+LEFT JOIN Formlabs.dbo.Ordersent AS O
+ON E.SerialName = O.SerialName
+LEFT JOIN Formlabs.dbo.Packagereceived AS P
+ON O.SerialName = P.SerialName
+LEFT JOIN Formlabs.dbo.ReturnTracking AS R
+ON P.SerialName = R.SerialName
+LEFT JOIN Formlabs.dbo.Disbursement AS D
+ON R.SerialName = D.SerialName
+GROUP BY C.Region
